@@ -1,6 +1,9 @@
 riemann-kafka
 =============
 
+[![Build Status](https://secure.travis-ci.org/pyr/riemann-kafka.png)](http://travis-ci.org/pyr/riemann-kafka)
+
+
 kafka consumer and producer support for riemann
 
 ## Synopsis
