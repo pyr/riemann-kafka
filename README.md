@@ -16,7 +16,7 @@ In riemann.config
 
 (kafka/kafka-consumer {:topic "events"
                        :zookeeper.connect "localhost:181"
-                       :group.id "riemann.consumemr"
+                       :group.id "riemann.consumer"
                        :auto.offset.reset "smallest"
                        :auto.commit.enable "false"})
 
@@ -27,6 +27,27 @@ In riemann.config
   (streams
     prn
     (expired producer)))
+```
+
+The riemann-kafka consumer now supports customized decoder to decode messages.
+By default it expects the incoming message a riemann protobuf object.
+
+```clojure
+
+(defn my-decoder
+  "Decode kafka message into a riemann event"
+  [input]
+  ; input is a single kafka message in Bytes
+  ; If the payload is a string, it needs to be reverted by `(String. input)`
+  ; Return SHOULD be a seq of riemann events
+  ...)
+
+(kafka/kafka-consumer {:topic "events"
+                       :zookeeper.connect "localhost:181"
+                       :group.id "riemann.consumer"
+                       :auto.offset.reset "smallest"
+                       :auto.commit.enable "false"
+                       :decoder my-decoder})
 ```
 
 ## Installing
