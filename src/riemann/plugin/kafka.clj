@@ -10,7 +10,7 @@
             [clj-kafka.producer    :refer [send-message producer]]
             [riemann.service       :refer [Service ServiceEquiv]]
             [riemann.config        :refer [service!]]
-            [clojure.tools.logging :refer [info error]]))
+            [clojure.tools.logging :refer [debug info error]]))
 
 (defn safe-decode
   "Do not let a bad payload break our consumption"
@@ -41,7 +41,7 @@
               msg-seq      (iterator-seq (.iterator ^KafkaStream stream))]
           (doseq [msg msg-seq :while @running? :when @core]
             (doseq [event (:events (safe-decode msg))]
-              (info "got input event: " event)
+              (debug "got input event: " event)
               (stream! @core event))
             (.commitOffsets inq))
           (info "was instructed to stop, BYE!"))
