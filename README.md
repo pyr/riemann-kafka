@@ -29,25 +29,50 @@ In riemann.config
     (expired producer)))
 ```
 
-The riemann-kafka consumer now supports customized decoder to decode messages.
-By default it expects the incoming message a riemann protobuf object.
+### Customized Encoder and Decoder
+
+The riemann-kafka producer supports customized encoder to encode events.  
+A encoder is a function that expects a sequence of events and returns a Bytes object.  
+If you don't specify a :encoder, riemann.common/encode is used, which turns events into a protobuf.
 
 ```clojure
 
-(defn my-decoder
+(defn my-json-encoder
+  "Encode events into json, then toBytes"
+  [events]
+  (.getBytes (cheshire.core/encode events)))
+
+(let [producer (kafka/kafka-producer
+                 {:topic "expired"
+                  :metadata.broker.list "localhost:9091"
+                  :encoder my-json-encoder})]
+  (streams
+    prn
+    (expired producer)))
+
+```
+
+The riemann-kafka consumer supports customized decoder to decode messages.  
+A decoder gets a message from kafka as a Byte object, then returns a sequence of events.  
+If you don't specify a :decoder, the default decoder expects the incoming message to be a riemann protobuf object.
+
+```clojure
+
+(defn my-json-decoder
   "Decode kafka message into a riemann event"
   [input]
   ; input is a single kafka message in Bytes
   ; If the payload is a string, it needs to be reverted by `(String. input)`
   ; Return SHOULD be a seq of riemann events
-  ...)
+  (let [decoded-msg (cheshire.core/parse-string (String. input) true)]
+    (map riemann.common/event decoded-msg)))
 
 (kafka/kafka-consumer {:topic "events"
                        :zookeeper.connect "localhost:181"
                        :group.id "riemann.consumer"
                        :auto.offset.reset "smallest"
                        :auto.commit.enable "false"
-                       :decoder my-decoder})
+                       :decoder my-json-decoder})
 ```
 
 ## Installing

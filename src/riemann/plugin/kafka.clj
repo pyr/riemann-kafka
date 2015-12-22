@@ -29,7 +29,7 @@
 (defn stringify
   "Prepare a map to be converted to properties"
   [props]
-  (let [input (dissoc props :topic :decoder)
+  (let [input (dissoc props :topic :decoder :encoder)
         skeys (map (juxt (comp name key) val) input)]
     (reduce merge {} skeys)))
 
@@ -92,5 +92,6 @@
   [{:keys [topic] :as config}]
   (let [p (producer (stringify config))]
     (fn [event]
-      (let [events (if (sequential? event) event [event])]
-        (send-message p (KeyedMessage. topic (encode events)))))))
+      (let [events (if (sequential? event) event [event])
+            encoder (or (:encoder config) encode)]
+        (send-message p (KeyedMessage. topic (encoder events)))))))
