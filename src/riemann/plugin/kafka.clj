@@ -12,19 +12,24 @@
             [riemann.config        :refer [service!]]
             [clojure.tools.logging :refer [debug info error]]))
 
+(defn protobuf-decoder
+  "Decode protobuf object to riemann events"
+  [value]
+  (:events (decode-msg (Proto$Msg/parseFrom value))))
+
 (defn safe-decode
   "Do not let a bad payload break our consumption"
-  [input]
+  [decoder input]
   (try
     (let [{:keys [value]} (to-clojure input)]
-      (decode-msg (Proto$Msg/parseFrom value)))
+      (decoder value))
     (catch Exception e
-      (error e "could not decode protobuf msg"))))
+      (error e "could not decode msg"))))
 
 (defn stringify
   "Prepare a map to be converted to properties"
   [props]
-  (let [input (dissoc props :topic)
+  (let [input (dissoc props :topic :decoder)
         skeys (map (juxt (comp name key) val) input)]
     (reduce merge {} skeys)))
 
@@ -38,9 +43,10 @@
       (try
         (let [stream-map   (.createMessageStreams inq {topic (int 1)})
               [stream & _] (get stream-map topic)
-              msg-seq      (iterator-seq (.iterator ^KafkaStream stream))]
+              msg-seq      (iterator-seq (.iterator ^KafkaStream stream))
+              decoder      (or (:decoder config) protobuf-decoder)]
           (doseq [msg msg-seq :while @running? :when @core]
-            (doseq [event (:events (safe-decode msg))]
+            (doseq [event (safe-decode decoder msg)]
               (debug "got input event: " event)
               (stream! @core event))
             (.commitOffsets inq))
