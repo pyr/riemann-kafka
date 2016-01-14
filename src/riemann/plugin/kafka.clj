@@ -29,7 +29,7 @@
 (defn stringify
   "Prepare a map to be converted to properties"
   [props]
-  (let [input (dissoc props :topic :decoder :encoder)
+  (let [input (dissoc props :topic :decoder :encoder :commit.per.msg)
         skeys (map (juxt (comp name key) val) input)]
     (reduce merge {} skeys)))
 
@@ -41,15 +41,19 @@
     (future
       (info "in consumption thread with consumer: " inq)
       (try
-        (let [stream-map   (.createMessageStreams inq {topic (int 1)})
-              [stream & _] (get stream-map topic)
-              msg-seq      (iterator-seq (.iterator ^KafkaStream stream))
-              decoder      (or (:decoder config) protobuf-decoder)]
+        (let [stream-map     (.createMessageStreams inq {topic (int 1)})
+              [stream & _]   (get stream-map topic)
+              msg-seq        (iterator-seq (.iterator ^KafkaStream stream))
+              decoder        (:decoder config protobuf-decoder)
+              commit-per-msg (:commit.per.msg config true)]
+          (when (not commit-per-msg)
+            (info "Commission from riemann-kafka consumer is disabled."
+                  "DO NOT disable :auto.commit.enable in your consumer config."))
           (doseq [msg msg-seq :while @running? :when @core]
             (doseq [event (safe-decode decoder msg)]
               (debug "got input event: " event)
               (stream! @core event))
-            (.commitOffsets inq))
+            (when commit-per-msg (.commitOffsets inq)))
           (info "was instructed to stop, BYE!"))
         (catch Exception e
           (error e "interrupted consumption"))
