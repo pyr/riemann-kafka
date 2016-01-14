@@ -1,4 +1,4 @@
-(defproject spootnik/riemann-kafka "0.1.3"
+(defproject spootnik/riemann-kafka "0.1.4"
   :description "riemann producer and consumer for kafka queues"
   :url "https://github.com/pyr/riemann-kafka"
   :license {:name "MIT License"}
